@@ -1,3 +1,57 @@
+
+import os, asyncio, aiohttp, urllib.parse, re, yt_dlp
+
+async def fetch_cloud_video(url, out_path):
+    if os.path.exists(out_path):
+        try:
+            os.remove(out_path)
+        except Exception:
+            pass
+            
+    clean_url = url.split("?")[0].strip()
+
+    if "instagram.com" in clean_url:
+        dd_url = clean_url.replace("instagram.com", "ddinstagram.com")
+        headers = {"User-Agent": "TelegramBot (like TwitterBot)"}
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(dd_url, headers=headers, timeout=aiohttp.ClientTimeout(total=8)) as r:
+                    if r.status == 200:
+                        html = await r.text()
+                        m = re.search(r'<meta property="og:video" content="([^"]+)"', html)
+                        if m:
+                            v_url = m.group(1).replace("&amp;", "&")
+                            async with session.get(v_url, timeout=aiohttp.ClientTimeout(total=25)) as vr:
+                                if vr.status == 200:
+                                    with open(out_path, "wb") as f_out:
+                                        f_out.write(await vr.read())
+                                    if os.path.exists(out_path) and os.path.getsize(out_path) > 1000:
+                                        return out_path
+        except Exception:
+            pass
+
+    try:
+        ydl_opts = {
+            "outtmpl": out_path,
+            "format": "best[ext=mp4]/best",
+            "quiet": True,
+            "no_warnings": True,
+            "socket_timeout": 15,
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+            }
+        }
+        if "youtu" in clean_url:
+            ydl_opts["extractor_args"] = {"youtube": {"player_client": ["android"]}}
+            
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, lambda: yt_dlp.YoutubeDL(ydl_opts).download([clean_url]))
+        if os.path.exists(out_path) and os.path.getsize(out_path) > 1000:
+            return out_path
+    except Exception:
+        pass
+    return None
+
 import asyncio
 import time
 import json
