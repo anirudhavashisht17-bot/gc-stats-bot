@@ -1,8 +1,6 @@
 telethon
 aiohttp
-yt-dlp>=2025.1.1
-ffmpeg-python
-cryptography
-pillow
 requests
+yt-dlp>=2025.1.1
+imageio-ffmpeg
 urllib3
