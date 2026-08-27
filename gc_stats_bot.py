@@ -1,4 +1,62 @@
 
+import os, asyncio, aiohttp, re, yt_dlp
+
+async def safe_download_media(media_url, dest_path):
+    if os.path.exists(dest_path):
+        try: os.remove(dest_path)
+        except: pass
+        
+    clean = media_url.split("?")[0].strip()
+    
+    # 1. Instagram 429 Bypass via DDInstagram Proxy Stream
+    if "instagram.com" in clean:
+        dd_url = clean.replace("instagram.com", "ddinstagram.com")
+        headers = {"User-Agent": "TelegramBot (like TwitterBot)"}
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(dd_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        html = await resp.text()
+                        m = re.search(r'<meta property="og:video" content="([^"]+)"', html)
+                        if m:
+                            v_url = m.group(1).replace("&amp;", "&")
+                            async with session.get(v_url, timeout=aiohttp.ClientTimeout(total=30)) as v_resp:
+                                if v_resp.status == 200:
+                                    with open(dest_path, "wb") as f_out:
+                                        while True:
+                                            chunk = await v_resp.content.read(1024 * 1024)
+                                            if not chunk: break
+                                            f_out.write(chunk)
+                                    if os.path.exists(dest_path) and os.path.getsize(dest_path) > 1000:
+                                        return dest_path
+        except Exception as e:
+            print(f"DDInstagram stream error: {e}")
+
+    # 2. YT-DLP Mobile Fallback
+    try:
+        ydl_opts = {
+            'outtmpl': dest_path,
+            'format': 'best[ext=mp4]/best',
+            'quiet': True,
+            'no_warnings': True,
+            'socket_timeout': 15,
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36'
+            }
+        }
+        if "youtu" in clean:
+            ydl_opts['extractor_args'] = {'youtube': {'player_client': ['android']}}
+            
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, lambda: yt_dlp.YoutubeDL(ydl_opts).download([clean]))
+        if os.path.exists(dest_path) and os.path.getsize(dest_path) > 1000:
+            return dest_path
+    except Exception as e:
+        print(f"Fallback ytdlp error: {e}")
+        
+    return None
+
+
 import os, asyncio, aiohttp, urllib.parse, re, yt_dlp
 
 async def fetch_cloud_video(url, out_path):
@@ -478,22 +536,27 @@ async def track_messages(event):
 
     raw_text = event.raw_text or ""
 
-    # AUTO MEDIA DOWNLOADER (IG + YT)
-    media_regex = r"(https?://(?:www\.)?(?:instagram\.com/(?:reel|reels|p|share|tv)/[A-Za-z0-9_.-]+|youtu\.be/[A-Za-z0-9_-]+|youtube\.com/(?:watch\?v=[A-Za-z0-9_-]+|shorts/[A-Za-z0-9_-]+)))"
+        # AUTO MEDIA DOWNLOADER (FIXED)
+    media_regex = r"(https?://(?:www\.)?(?:instagram\.com/(?:reel|reels|p|share|tv)/[A-Za-z0-9_.-]+|youtu\.be/[A-Za-z0-9_.-]+|youtube\.com/(?:watch\?v=[A-Za-z0-9_.-]+|shorts/[A-Za-z0-9_.-]+)))"
     match = re.search(media_regex, raw_text)
     if match:
         url = match.group(1)
         rand_id = str(random.randint(10000, 99999))
-        output_template = f"media_{rand_id}.%(ext)s"
-
+        target_file = f"media_{rand_id}.mp4"
         try:
-            await asyncio.to_thread(download_media_sync, url, output_template)
-            target_file = None
-            for f in os.listdir("."):
-                if f.startswith(f"media_{rand_id}"):
-                    target_file = f
-                    break
+            downloaded = await safe_download_media(url, target_file)
+            if downloaded and os.path.exists(downloaded):
+                await event.reply(file=downloaded)
+                if os.path.exists(downloaded):
+                    os.remove(downloaded)
+                return
+        except Exception as e:
+            print(f"Auto download error: {e}")
+        finally:
             if target_file and os.path.exists(target_file):
+                try: os.remove(target_file)
+                except: pass
+if target_file and os.path.exists(target_file):
                 await bot.send_file(event.chat_id, file=target_file, supports_streaming=True)
         except Exception as e:
             print(f"⚠️ Download Error: {e}")
