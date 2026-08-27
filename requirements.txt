@@ -1,2 +1,7 @@
 telethon
 aiohttp
+yt-dlp
+ffmpeg-python
+cryptography
+pillow
+requests
