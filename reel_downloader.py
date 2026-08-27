@@ -4,22 +4,28 @@ import aiohttp
 import asyncio
 
 async def download_media(link: str, output_path: str = "downloaded_video.mp4") -> str:
-    # Cobalt public API endpoints
-    apis = [
-        "https://api.cobalt.tools/api/json",
-        "https://cobalt.api.screc.me/api/json"
+    # Multiple Fast CDN Extractors (No IP Block / Pre-merged MP4)
+    gateways = [
+        "https://api.v2.cobalt.tools/api/json",
+        "https://cobalt-api.kwiatekm.pl/api/json",
+        "https://api.cobalt.lol/api/json",
+        "https://dl.stream-api.org/api/json"
     ]
+    
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
-    payload = {"url": link, "vQuality": "720"}
+    payload = {
+        "url": link,
+        "vQuality": "720"
+    }
 
-    for api_url in apis:
+    for gw in gateways:
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(api_url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                async with session.post(gw, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=8)) as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         media_url = data.get("url")
@@ -37,23 +43,25 @@ async def download_media(link: str, output_path: str = "downloaded_video.mp4") -
         except Exception:
             continue
 
-    # Fallback to yt-dlp with optimized headers
+    # Fallback to direct public scrapers
     try:
-        import yt_dlp
-        ydl_opts = {
-            'outtmpl': output_path,
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            'quiet': True,
-            'no_warnings': True,
-            'socket_timeout': 15,
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-        }
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, lambda: yt_dlp.YoutubeDL(ydl_opts).download([link]))
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
-            return output_path
+        insta_api = f"https://api.tiklydown.eu.org/api/download?url={link}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(insta_api, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    direct_url = data.get("video_url") or data.get("url") or (data.get("result", [{}])[0].get("url") if isinstance(data.get("result"), list) else None)
+                    if direct_url:
+                        async with session.get(direct_url, timeout=aiohttp.ClientTimeout(total=20)) as v_resp:
+                            if v_resp.status == 200:
+                                with open(output_path, "wb") as f:
+                                    while True:
+                                        chunk = await v_resp.content.read(1024 * 1024)
+                                        if not chunk:
+                                            break
+                                        f.write(chunk)
+                                if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+                                    return output_path
     except Exception:
         pass
 
