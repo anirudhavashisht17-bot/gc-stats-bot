@@ -1,13 +1,12 @@
 import os
 import sys
 import asyncio
-import subprocess
 from aiohttp import web
 
 PORT = int(os.environ.get("PORT", 8080))
 
 async def ping(request):
-    return web.Response(text="GC Stats Bot is running live!")
+    return web.Response(text="GC Stats Bot is Running 24/7!")
 
 async def start_web():
     app = web.Application()
@@ -17,22 +16,28 @@ async def start_web():
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
-    print(f"Web server started on port {PORT}")
-
-def run_bot():
-    return subprocess.Popen([sys.executable, "gc_stats_bot.py"])
+    print(f"✅ Web server bound to port {PORT}")
 
 async def main():
     await start_web()
-    bot_process = run_bot()
-    print("GC Stats Bot process started.")
     
-    # Process ko monitor karte rahenge
-    while True:
-        if bot_process.poll() is not None:
-            print("Bot crashed or stopped, restarting...")
-            bot_process = run_bot()
-        await asyncio.sleep(10)
+    # Import and run the actual bot script inside the same async event loop
+    print("🚀 Initializing gc_stats_bot...")
+    try:
+        import gc_stats_bot
+        # Agar gc_stats_bot ke andar client object hai
+        if hasattr(gc_stats_bot, 'bot') and hasattr(gc_stats_bot.bot, 'run_until_disconnected'):
+            await gc_stats_bot.bot.run_until_disconnected()
+        elif hasattr(gc_stats_bot, 'client') and hasattr(gc_stats_bot.client, 'run_until_disconnected'):
+            await gc_stats_bot.client.run_until_disconnected()
+        else:
+            # Fallback event loop keep alive
+            while True:
+                await asyncio.sleep(3600)
+    except Exception as e:
+        print(f"❌ Error in bot runtime: {e}")
+        # Run fallback execution
+        os.system(f"{sys.executable} gc_stats_bot.py")
 
 if __name__ == "__main__":
     asyncio.run(main())
