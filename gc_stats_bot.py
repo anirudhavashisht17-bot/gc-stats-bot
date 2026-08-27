@@ -1,4 +1,3 @@
-from reel_downloader import download_media
 import asyncio
 import time
 import json
@@ -425,22 +424,13 @@ async def track_messages(event):
 
     raw_text = event.raw_text or ""
 
-        # AUTO MEDIA DOWNLOADER (IG + YT FAST STREAM)
-    media_regex = r"(https?://(?:www\.)?(?:instagram\.com/(?:reel|reels|p|share|tv)/[A-Za-z0-9_.-]+|youtu\.be/[A-Za-z0-9_.-]+|youtube\.com/(?:watch\?v=[A-Za-z0-9_.-]+|shorts/[A-Za-z0-9_.-]+)))"
+    # AUTO MEDIA DOWNLOADER (IG + YT)
+    media_regex = r"(https?://(?:www\.)?(?:instagram\.com/(?:reel|reels|p|share|tv)/[A-Za-z0-9_.-]+|youtu\.be/[A-Za-z0-9_-]+|youtube\.com/(?:watch\?v=[A-Za-z0-9_-]+|shorts/[A-Za-z0-9_-]+)))"
     match = re.search(media_regex, raw_text)
     if match:
         url = match.group(1)
         rand_id = str(random.randint(10000, 99999))
-        out_file = f"media_{rand_id}.mp4"
-        try:
-            downloaded = await download_media(url, out_file)
-            if downloaded and os.path.exists(downloaded):
-                await event.reply(file=downloaded)
-                if os.path.exists(downloaded):
-                    os.remove(downloaded)
-                return
-        except Exception as e:
-            print(f"Auto-download stream error: {e}")
+        output_template = f"media_{rand_id}.%(ext)s"
 
         try:
             await asyncio.to_thread(download_media_sync, url, output_template)
