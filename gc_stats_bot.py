@@ -1,4 +1,3 @@
-from reel_downloader import download_media
 import asyncio
 import time
 import json
@@ -423,40 +422,15 @@ async def track_messages(event):
     if not sender or getattr(sender, 'bot', False):
         return
 
-    raw_text = event.raw_text or ""    # AUTO MEDIA DOWNLOADER
-    media_regex = r"(https?://(?:www\.)?(?:instagram\.com/(?:reel|reels|p|share|tv)/[A-Za-z0-9_.-]+|youtu\.be/[A-Za-z0-9_.-]+|youtube\.com/(?:watch\?v=[A-Za-z0-9_.-]+|shorts/[A-Za-z0-9_.-]+)))"
+    raw_text = event.raw_text or ""
+
+    # AUTO MEDIA DOWNLOADER (IG + YT)
+    media_regex = r"(https?://(?:www\.)?(?:instagram\.com/(?:reel|reels|p|share|tv)/[A-Za-z0-9_.-]+|youtu\.be/[A-Za-z0-9_-]+|youtube\.com/(?:watch\?v=[A-Za-z0-9_-]+|shorts/[A-Za-z0-9_-]+)))"
     match = re.search(media_regex, raw_text)
     if match:
         url = match.group(1)
         rand_id = str(random.randint(10000, 99999))
-        video_file = f"media_{rand_id}.mp4"
-        try:
-            status_msg = await event.reply("⚡ **Fetching video...**")
-            downloaded = await download_media(url, video_file)
-            if downloaded and os.path.exists(downloaded):
-                await event.reply(file=downloaded)
-                await status_msg.delete()
-                if os.path.exists(downloaded):
-                    os.remove(downloaded)
-                return
-            else:
-                await status_msg.edit("❌ Failed to extract video stream.")
-        except Exception as e:
-            print(f"Download Error: {e}")
-
-    if match:
-        url = match.group(1)
-        rand_id = str(random.randint(10000, 99999))
-        out_file = f"media_{rand_id}.mp4"
-        try:
-            downloaded = await download_media(url, out_file)
-            if downloaded and os.path.exists(downloaded):
-                await event.reply(file=downloaded)
-                if os.path.exists(downloaded):
-                    os.remove(downloaded)
-                return
-        except Exception as e:
-            print(f"Downloader exception: {e}")
+        output_template = f"media_{rand_id}.%(ext)s"
 
         try:
             await asyncio.to_thread(download_media_sync, url, output_template)
