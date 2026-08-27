@@ -16,7 +16,7 @@ API_HASH = "a19e7fa3783e6e282b70e7fa2969302c"
 BOT_TOKEN = "8760068272:AAHbBeLPOvhOEKv6BQ4J0i_dX6M7BvmuU-Y"
 ADMIN_ID = 8225211569  # Bot Owner ID
 
-bot = TelegramClient("gc_stats_bot_session", API_ID, API_HASH)
+bot = TelegramClient(None, API_ID, API_HASH)
 INTRO_VIDEO_PATH = "intro_video.mp4"
 
 # In-Memory Storage
