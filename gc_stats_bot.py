@@ -1,3 +1,4 @@
+import utag_module
 import asyncio
 import time
 import json
@@ -689,6 +690,7 @@ async def broadcast_handler(event):
 # ==================== MAIN ====================
 async def main():
     print("🤖 Bot LIVE with Moderation, Welcome System & Auto Downloader...")
+    utag_module.register_utag(bot)
     await bot.start(bot_token=BOT_TOKEN)
     await bot.run_until_disconnected()
 
