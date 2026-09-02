@@ -1,3 +1,4 @@
+import baka_game
 import utag_module
 import asyncio
 import time
@@ -691,6 +692,7 @@ async def broadcast_handler(event):
 async def main():
     print("🤖 Bot LIVE with Moderation, Welcome System & Auto Downloader...")
     utag_module.register_utag(bot)
+    baka_game.register_baka(bot)
     await bot.start(bot_token=BOT_TOKEN)
     await bot.run_until_disconnected()
 
